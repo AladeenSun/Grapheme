@@ -30,14 +30,18 @@ setup_env env window = void $ do
         # set style [("color","#333")]
     elInput       <- UI.input
         # set style [("width", "800px"), ("font-size", "18px")]
-    elBtn         <- UI.button # set text "Run"
+    elBtn         <- UI.button # set UI.text "Run"
     elGraph       <- UI.div
         # set style [("width", "850px"), ("overflow", "scroll"), ("border", "solid #ddd")]
         # set UI.html "Graph showed here."
     elOutput      <- UI.span
         # set style [("width", "800px")]
-    elDot         <- UI.pre
+    elDot         <- UI.textarea
         # set UI.text "Dot format showed here."
+        # set style [("width", "850px"), ("height", "300px")]
+    elModBtn      <- UI.button
+        # set UI.text "Repaint"
+        # set style [("display", "none")]
     
     getBody window #+ [
             UI.h1 #+ [UI.string "Welcome to Grapheme!"]
@@ -51,6 +55,7 @@ setup_env env window = void $ do
                   , UI.hr
                   , element elDot
                   , UI.hr
+                  , element elModBtn
                   , element elGraph
               ]
               ,
@@ -58,11 +63,17 @@ setup_env env window = void $ do
                   UI.h2 # set UI.text "Command History"
                   , element elHistoryList
               ]
-            ] # set style [("width", "90%")]
+            ] # set style [("width", "95%")]
             ]
 
     let 
         interpretOuput :: String -> String -> UI ()
+        interpretOuput ('(':'p':'a':'i':'n':'t':xs)
+                       ('I':'n':'v':'a':'l':'i':'d':ys) = void $ do
+            element elOutput # set UI.text ("Invalid" ++ ys)
+            element elGraph # set UI.html "Graph showed here."
+            element elModBtn # set style [("display", "none")]
+            element elDot # set UI.value "Dot format showed here."
         interpretOuput ('(':'p':'a':'i':'n':'t':xs) ys = void $ do
             outh <- liftIO $ openFile "graph.dot" WriteMode
             liftIO $ hPutStrLn outh ys
@@ -70,12 +81,14 @@ setup_env env window = void $ do
             liftIO $ rawSystem "dot" ["-O", "-Tsvg", "graph.dot"]
             gs <- liftIO $ readFile "graph.dot.svg"
             element elGraph # set UI.html gs
+            element elModBtn # set style [("display", "inline")]
+            element elDot # set UI.value ys
             element elOutput # set UI.text ""
-            element elDot # set UI.text ys
         interpretOuput xs ys = void $ do
             element elOutput # set UI.text ys
             element elGraph # set UI.html "Graph showed here."
-            element elDot # set UI.text "Dot format showed here."
+            element elModBtn # set style [("display", "none")]
+            element elDot # set UI.value "Dot format showed here."
 
         calculateResult :: Env -> UI ()
         calculateResult env = void $ do
@@ -95,8 +108,19 @@ setup_env env window = void $ do
         calculateInput env key = void $
             element elOutput # set text ""
 
-    on UI.click elBtn   $ \_ -> calculateResult env
+        repaintGraph = void $ do
+            ys <- get value elDot
+            outh <- liftIO $ openFile "graph.dot" WriteMode
+            liftIO $ hPutStrLn outh ys
+            liftIO $ hClose outh
+            liftIO $ rawSystem "dot" ["-O", "-Tsvg", "graph.dot"]
+            gs <- liftIO $ readFile "graph.dot.svg"
+            element elGraph # set html gs
+
+
+    on UI.click elBtn     $ \_ -> calculateResult env
     on UI.keydown elInput $ calculateInput env
+    on UI.click elModBtn  $ \_ -> repaintGraph
 
 -- Symbols allowed in scheme
 
