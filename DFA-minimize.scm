@@ -1,0 +1,51 @@
+; Sample program for DFA minimize
+
+(load "graph-lib.scm")
+
+(define (DFA-minimize G)
+   (define v (vertexes G))
+   (define a (arcs G))
+   (define l (lex G))
+   (define adj-list (map (lambda (x) (list (list (car x) (caddr x)) (cadr x))) a))
+   (define acc (map sflip (filter acc? v)))
+   (define non-acc (filter (lambda (x) (not (acc? x))) v))
+   (define nom-v (append acc non-acc))
+   (define (step id ch)
+   		(cadr (assq (list id ch) adj-list)))
+   (define (process set)
+   		(define (label cnt set res)
+   			(if (null? set) res
+   							(label (+ cnt 1) (cdr set) (fold (lambda (x y) (cons (list y cnt) x)) res (car set)))))
+   		(define v-map-tmp (label 0 set '()))
+   		(define (succ id)
+   			(sort (fold (lambda (x y) (cons (cadr (assq (step id y) v-map-tmp)) x)) '() l) <))
+   		(define (group-label subset) 
+   			(define tmp (fold (lambda (x y) (cons (list y (succ y)) x)) '() subset))
+   			(map (lambda (x) (list (car x) (append (cdr x) subset))) tmp))
+   		(define succ-label-list (fold (lambda (x y) (append (group-label y) x)) '() set))
+   		(define all-labels (remove-duplicates (map cadr succ-label-list)))
+   		
+   		(define (pick label) (map car (filter (lambda (x) (eq? (cadr x) label)) succ-label-list)))
+   		(define set-new (fold (lambda (x y) (cons (pick y) x)) '() all-labels))
+   		(if (= (length set) (length set-new)) set (process set-new)))
+   (define old-st (if (eqs? (car nom-v) (car v)) (car nom-v) (car v)))
+   (define tmp-v (process (list acc non-acc)))
+   (define split-v (splitf tmp-v (lambda (x) (fold (lambda (y z) (if (eq? old-st z) #t y)) #f x))))
+   (define compound-v (append (cadr split-v) (car split-v) (caddr split-v)))
+   (define (convertV T)
+   		(listtoatom T))
+   (define (convertVacc T) 
+	(define acc-status (fold (lambda (x y) (or x (list? (memq y acc)))) #f T))
+	(if acc-status (atom-add '# (convertV T)) (convertV T)))
+
+   (define (get-map lst res)
+   		(define atom-now (if (null? lst) #t (convertV (car lst))))
+   		(if (null? lst) res
+   						(get-map (cdr lst) (append (fold (lambda (x y) (cons (list y atom-now) x)) '() (car lst)) res))))
+   (define v-map (get-map compound-v '()))
+   (define compound-a (remove-duplicates 
+   						(fold (lambda (x y) (append 
+   												(fold (lambda (z w) (cons (list (convertV y) (cadr (assq (step (car y) w) v-map)) w) z)) '() l) 
+   												x))
+   								'() compound-v))) 
+   (list (map convertVacc compound-v) compound-a))
