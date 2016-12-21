@@ -148,7 +148,7 @@ readExprList = readOrThrow (endBy parseExpr spaces)
 -- Ignoring whitesapces
 
 spaces :: Parser ()
-spaces = skipMany1 space
+spaces = skipMany space
 
 {-
   Beyond any shadow of a doubt, we need to define a data type that can hold any scheme value.
