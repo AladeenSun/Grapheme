@@ -30,7 +30,7 @@ setup_env env window = void $ do
     return window # set title "Grapheme"
 
     elHistoryList <- UI.ul
-        # set style [("color","#333")]
+        # set style [("color","#666")]
     elInput       <- UI.input
         # set style [("width", "800px"), ("font-size", "18px")]
     elBtn         <- UI.button # set UI.text "Run"
@@ -48,6 +48,7 @@ setup_env env window = void $ do
     
     getBody window #+ [
             UI.h1 #+ [UI.string "Welcome to Grapheme!"]
+            , UI.hr
             , row[
               column [
                   UI.h2 # set UI.text "Type Command and Run"
@@ -72,21 +73,21 @@ setup_env env window = void $ do
     let 
         interpretOuput :: String -> String -> UI ()
         interpretOuput ('(':'p':'a':'i':'n':'t':xs)
-                       ('I':'n':'v':'a':'l':'i':'d':ys) = void $ do
-            element elOutput # set UI.text ("Invalid" ++ ys)
-            element elGraph # set UI.html "Graph showed here."
-            element elModBtn # set style [("display", "none")]
-            element elDot # set UI.value "Dot format showed here."
-        interpretOuput ('(':'p':'a':'i':'n':'t':xs) ys = void $ do
+                       ('d':'i':'g':'r':'a':'p':'h':ys) = void $ do
             outh <- liftIO $ openFile "graph.dot" WriteMode
-            liftIO $ hPutStrLn outh ys
+            liftIO $ hPutStrLn outh ("digraph" ++ ys)
             liftIO $ hClose outh
             liftIO $ rawSystem "dot" ["-O", "-Tsvg", "graph.dot"]
             gs <- liftIO $ readFile "graph.dot.svg"
             element elGraph # set UI.html gs
             element elModBtn # set style [("display", "inline")]
-            element elDot # set UI.value ys
+            element elDot # set UI.value ("digraph" ++ ys)
             element elOutput # set UI.text ""
+        interpretOuput ('(':'p':'a':'i':'n':'t':xs) ys = void $ do
+            element elOutput # set UI.text ys
+            element elGraph # set UI.html "Graph showed here."
+            element elModBtn # set style [("display", "none")]
+            element elDot # set UI.value "Dot format showed here."
         interpretOuput xs ys = void $ do
             element elOutput # set UI.text ys
             element elGraph # set UI.html "Graph showed here."
@@ -108,8 +109,8 @@ setup_env env window = void $ do
             interpretOuput xs ys
             element elInput # set UI.value ""
             element elHistoryList #+ [UI.li # set text xs]
-        calculateInput env key = void $
-            element elOutput # set text ""
+        calculateInput env key = void $ do
+            element elOutput # set style [("color", "#666")]
 
         repaintGraph = void $ do
             ys <- get value elDot
