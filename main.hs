@@ -728,7 +728,7 @@ evalAndPrint :: Env -> String -> IO ()
 evalAndPrint env expr =  evalString env expr >>= putStrLn
 
 evalString :: Env -> String -> IO String
-evalString env expr = runIOThrows $ liftM show $ (liftThrows $ readExpr expr) >>= eval env
+evalString env expr = runIOThrows $ liftM show $ (liftThrows $ readExpr expr) >>= eval env >> defineVar env "LAST"
 
 until_ pred prompt action = do 
   result <- prompt
