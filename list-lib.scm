@@ -2,58 +2,10 @@
 
 (load "grapheme.scm")
 
-; List operations
+; Basic list operations
 
-(define (length lst)        (fold (lambda (x y) (+ x 1)) 0 lst))
-(define (list-ref lst pos)
-   (if (< pos 0)
-       #f
-       (if (eq? pos 0)
-           (if (null? lst)
-               #f
-               (car lst))
-           (list-ref (cdr lst (- pos 1))))))
-
-(define (append lst . lsts) 
-   (define (append2 lstx lsty) (if (null? lstx) lsty (cons (car lstx) (append2 (cdr lstx) lsty)))) 
-   (append2 lst (foldr append2 '() lsts)))
-
-(define (reverse lst)       (fold (flip cons) '() lst))
-
-(define (sort lst func)
-   (define (insert x lst) 
-      (if (null? lst) (list x) (if (func x (car lst)) (cons x lst) (cons (car lst) (insert x (cdr lst))))))
-   (foldl (lambda (x y) (insert y x)) '() lst))
-
-
-; Syntactic sugar for list-ref
-
-(define (first lst)         (list-ref 0 lst))
-(define (second lst)        (list-ref 1 lst))
-(define (third lst)         (list-ref 2 lst))
-(define (fourth lst)        (list-ref 3 lst))
-(define (fifth lst)         (list-ref 4 lst))
-(define (sixth lst)         (list-ref 5 lst))
-(define (seventh lst)       (list-ref 6 lst))
-(define (eighth lst)        (list-ref 7 lst))
-(define (ninth lst)         (list-ref 8 lst))
-(define (tenth lst)         (list-ref 9 lst))
-(define (last lst)          (list-ref (- (length lst) 1) lst))
-
-
-; List iterations
-
-(define (map func lst)      (foldr (lambda (x y) (cons (func x) y)) '() lst))
-(define (ormap func . lst) (fold (lambda (x y) (or (func y) x)) #f lst))
-(define (andmap func . lst) (fold (lambda (x y) (and (func y) x) #t lst)))
-
-(define (for-each func lst) 
-  (if (null? lst)
-      #t
-      (func (car lst))) 
-  (if (null? lst)
-       #t
-       (for-each func (cdr lst))))
+(define (null? obj)        (if (eqv? obj '()) #t #f))
+(define (list . objs)       objs)
 
 (define (foldl func accum lst)
   (if (null? lst)
@@ -73,14 +25,99 @@
 (define fold foldl)
 (define reduce fold)
 
-(define (sum . lst)         (fold + 0 lst))
-(define (product . lst)     (fold * 1 lst))
-(define (any? pred . lst)   (apply or (map pred lst)))
-(define (every? pred . lst) (apply and (map pred lst)))
+(define (length lst)        (fold (lambda (x y) (+ x 1)) 0 lst))
+(define (list-ref lst pos)
+   (if (< pos 0)
+       #f
+       (if (eq? pos 0)
+           (if (null? lst)
+               #f
+               (car lst))
+           (list-ref (cdr lst (- pos 1))))))
 
+
+; Syntactic sugar for list-ref
+
+(define (first lst)         (list-ref 0 lst))
+(define (second lst)        (list-ref 1 lst))
+(define (third lst)         (list-ref 2 lst))
+(define (fourth lst)        (list-ref 3 lst))
+(define (fifth lst)         (list-ref 4 lst))
+(define (sixth lst)         (list-ref 5 lst))
+(define (seventh lst)       (list-ref 6 lst))
+(define (eighth lst)        (list-ref 7 lst))
+(define (ninth lst)         (list-ref 8 lst))
+(define (tenth lst)         (list-ref 9 lst))
+(define (last lst)          (list-ref (- (length lst) 1) lst))
+
+(define (caar pair) (car (car pair)))
+(define (cadr pair) (car (cdr pair)))
+(define (cdar pair) (cdr (car pair)))
+(define (cddr pair) (cdr (cdr pair)))
+(define (caaar pair) (car (car (car pair))))
+(define (caadr pair) (car (car (cdr pair))))
+(define (cadar pair) (car (cdr (car pair))))
+(define (caddr pair) (car (cdr (cdr pair))))
+(define (cdaar pair) (cdr (car (car pair))))
+(define (cdadr pair) (cdr (car (cdr pair))))
+(define (cddar pair) (cdr (cdr (car pair))))
+(define (cdddr pair) (cdr (cdr (cdr pair))))
+(define (caaaar pair) (car (car (car (car pair)))))
+(define (caaadr pair) (car (car (car (cdr pair)))))
+(define (caadar pair) (car (car (cdr (car pair)))))
+(define (caaddr pair) (car (car (cdr (cdr pair)))))
+(define (cadaar pair) (car (cdr (car (car pair)))))
+(define (cadadr pair) (car (cdr (car (cdr pair)))))
+(define (caddar pair) (car (cdr (cdr (car pair)))))
+(define (cadddr pair) (car (cdr (cdr (cdr pair)))))
+(define (cdaaar pair) (cdr (car (car (car pair)))))
+(define (cdaadr pair) (cdr (car (car (cdr pair)))))
+(define (cdadar pair) (cdr (car (cdr (car pair)))))
+(define (cdaddr pair) (cdr (car (cdr (cdr pair)))))
+(define (cddaar pair) (cdr (cdr (car (car pair)))))
+(define (cddadr pair) (cdr (cdr (car (cdr pair)))))
+(define (cdddar pair) (cdr (cdr (cdr (car pair)))))
+(define (cddddr pair) (cdr (cdr (cdr (cdr pair)))))
+
+
+; List iterations
+
+(define (map func lst)      (foldr (lambda (x y) (cons (func x) y)) '() lst))
+(define (ormap func . lst) (fold (lambda (x y) (or (func y) x)) #f lst))
+(define (andmap func . lst) (fold (lambda (x y) (and (func y) x) #t lst)))
 (define (filter pred lst)   (foldr (lambda (x y) (if (pred x) (cons x y) y)) '() lst))
 (define (filter-not pred lst) (foldr (lambda (x y) (if (not (pred x)) (cons x y) y)) '() lst))
 
+(define (for-each func lst) 
+  (if (null? lst)
+      #t
+      (func (car lst))) 
+  (if (null? lst)
+       #t
+       (for-each func (cdr lst))))
+
+(define (sum . lst)         (fold + 0 lst))
+(define (product . lst)     (fold * 1 lst))
+(define (and . lst)         (fold && #t lst))
+(define (or . lst)          (fold || #f lst))
+(define (any? pred . lst)   (apply or (map pred lst)))
+(define (every? pred . lst) (apply and (map pred lst)))
+(define (max x . num-list) (fold (lambda (y z) (if (> y z) y z)) x num-list))
+(define (min x . num-list) (fold (lambda (y z) (if (< y z) y z)) x num-list))
+
+
+;Other list functions
+
+(define (append lst . lsts) 
+   (define (append2 lstx lsty) (if (null? lstx) lsty (cons (car lstx) (append2 (cdr lstx) lsty)))) 
+   (append2 lst (foldr append2 '() lsts)))
+
+(define (reverse lst)       (fold (flip cons) '() lst))
+
+(define (sort lst func)
+   (define (insert x lst) 
+      (if (null? lst) (list x) (if (func x (car lst)) (cons x lst) (cons (car lst) (insert x (cdr lst))))))
+   (foldl (lambda (x y) (insert y x)) '() lst))
 
 (define (remove obj lst . func)
    (define f 
