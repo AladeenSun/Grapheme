@@ -430,11 +430,11 @@
    								'() compound-v))) 
    (list (map convertVacc compound-v) compound-a))
 
-(define (print x) (write x))
-(define (output x str)
-   (define P (open-output-file str))
-   (write x P)
-   (close-output-port P))
-(define (paint x) (output (convert x) "output.txt"))
+;(define (print x) (write x))
+ ;(define (output x str)
+   ;(define P (open-output-file str))
+   ;(write x P)
+   ;(close-output-port P))
+ ;(define (paint x) (output (convert x) "output.txt"))
 
 'Done!

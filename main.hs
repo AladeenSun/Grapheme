@@ -1,25 +1,102 @@
 module Main where
 import Control.Monad
 import System.Environment
+import System.Cmd
 import Control.Monad.Error
 import Data.IORef
 import Text.ParserCombinators.Parsec hiding (spaces)
 import System.IO hiding (try)
+import qualified Graphics.UI.Threepenny as UI hiding ((<|>), many, apply)
+import Graphics.UI.Threepenny.Core hiding ((<|>), many, apply)
 
 --OK, Let's go.
 
 
 {-
-  The main function either executes a single expression (RunOne), or enters the REPL and continues evaluating expressions until we type "quit".
+  The main function takes input from GUI and output into GUI.
 -}
 
-
 main :: IO ()
-main = do args <- getArgs
-          case length args of
-              0 -> runRepl
-              1 -> runOne $ args !! 0
-              otherwise -> putStrLn "Program takes only 0 or 1 argument"
+main = startGUI defaultConfig setup
+
+setup :: Window -> UI ()
+setup window = liftIO primitiveBindings >>= flip setup_env window
+
+setup_env :: Env -> Window -> UI ()
+setup_env env window = void $ do
+    return window # set title "Grapheme"
+
+    elHistoryList <- UI.ul
+        # set style [("color","#333")]
+    elInput       <- UI.input
+        # set style [("width", "800px"), ("font-size", "18px")]
+    elBtn         <- UI.button # set text "Run"
+    elGraph       <- UI.div
+        # set style [("width", "850px"), ("overflow", "scroll"), ("border", "solid #ddd")]
+        # set UI.html "Graph showed here."
+    elOutput      <- UI.span
+        # set style [("width", "800px")]
+    elDot         <- UI.pre
+        # set UI.text "Dot format showed here."
+    
+    getBody window #+ [
+            UI.h1 #+ [UI.string "Welcome to Grapheme!"]
+            , row[
+              column [
+                  UI.h2 # set UI.text "Type Command and Run"
+                  , grid [[UI.string "Input:", element elInput]
+                       ,[element elBtn]
+                       ,[UI.hr, UI.hr]
+                       ,[UI.string "Output:", element elOutput]]
+                  , UI.hr
+                  , element elDot
+                  , UI.hr
+                  , element elGraph
+              ]
+              ,
+              column [
+                  UI.h2 # set UI.text "Command History"
+                  , element elHistoryList
+              ]
+            ] # set style [("width", "90%")]
+            ]
+
+    let 
+        interpretOuput :: String -> String -> UI ()
+        interpretOuput ('(':'p':'a':'i':'n':'t':xs) ys = void $ do
+            outh <- liftIO $ openFile "graph.dot" WriteMode
+            liftIO $ hPutStrLn outh ys
+            liftIO $ hClose outh
+            liftIO $ rawSystem "dot" ["-O", "-Tsvg", "graph.dot"]
+            gs <- liftIO $ readFile "graph.dot.svg"
+            element elGraph # set UI.html gs
+            element elOutput # set UI.text ""
+            element elDot # set UI.text ys
+        interpretOuput xs ys = void $ do
+            element elOutput # set UI.text ys
+            element elGraph # set UI.html "Graph showed here."
+            element elDot # set UI.text "Dot format showed here."
+
+        calculateResult :: Env -> UI ()
+        calculateResult env = void $ do
+            xs <- get value elInput
+            ys <- liftIO $ evalString env xs
+            interpretOuput xs ys
+            element elInput # set UI.value ""
+            element elHistoryList #+ [UI.li # set text xs]
+        
+        calculateInput :: Env -> Int -> UI ()
+        calculateInput env 13 = void $ do
+            xs <- get value elInput
+            ys <- liftIO $ evalString env xs
+            interpretOuput xs ys
+            element elInput # set UI.value ""
+            element elHistoryList #+ [UI.li # set text xs]
+        calculateInput env key = void $
+            element elOutput # set text ""
+
+    on UI.click elBtn   $ \_ -> calculateResult env
+    on UI.keydown elInput $ calculateInput env
 
 -- Symbols allowed in scheme
 
@@ -86,7 +163,10 @@ parseString = do char '"'
 parseComment :: Parser LispVal
 parseComment = do char ';'
                   x <- many (noneOf "\n\r")
-                  eol <- try (string "\n\r") <|> try (string "\r\n") <|> string "\n" <|> string "\r"
+                  eol <- try (Text.ParserCombinators.Parsec.string "\n\r")
+                     <|> try (Text.ParserCombinators.Parsec.string "\r\n")
+                     <|> Text.ParserCombinators.Parsec.string "\n"
+                     <|> Text.ParserCombinators.Parsec.string "\r"
                   return $ Comment x
 
 {-
@@ -272,7 +352,7 @@ primitives = [("+", numericBinop (+)),
               ("string<?", strBoolBinop (<)),
               ("string<=?", strBoolBinop (<=)),
               ("string>=?", strBoolBinop (>=)),
-	      ("atom>?", atomBoolBinop (>)),
+              ("atom>?", atomBoolBinop (>)),
               ("atom<?", atomBoolBinop (<)),
               ("car", car),
               ("cdr", cdr),
@@ -287,11 +367,11 @@ primitives = [("+", numericBinop (+)),
               ("sflip", sflip),
               ("eqs?", eqs),
               ("acc?", acc),
-	      ("convert", convert),
+	            ("convert", convert),
               ("atomtolist", atomtolist),
               ("atom-split", atom_split),
-              ("listtoatom", listtoatom){-,
-              ("paint", paint)-}
+              ("listtoatom", listtoatom),
+              ("paint", paint)
               
               ]
 
@@ -428,14 +508,14 @@ listtoatom [badArg] = throwError $ TypeMismatch "pair" badArg
 listtoatom badArgList = throwError $ NumArgs 1 badArgList 
 
 status :: String -> String
-status ('#' : x) = x ++ " [shape=doublecircle]\n"
-status x = x ++ " [shape=circle]\n"
+status ('#' : x) = "\"" ++ x ++ "\"" ++ " [shape=doublecircle width=0.75]\n"
+status x = "\"" ++ x ++ "\"" ++ " [shape=circle width=0.85]\n"
 
 showArc :: LispVal -> String
-showArc (List (a : b : c : d)) = (show a) ++ " -> " ++ (show b) ++ " [label=\"" ++ (show c) 
+showArc (List (a : b : c : d)) = "\"" ++ (show a) ++ "\"" ++ " -> " ++ "\"" ++ (show b) ++ "\"" ++ " [label=\"" ++ (show c) 
 
 showStart :: LispVal -> String
-showStart (List (x : xs)) = (show x)
+showStart (List (x : xs)) = "\"" ++ (show x) ++ "\""
 
 convertV :: LispVal -> ThrowsError LispVal
 --convertV [List (Atom ("#":x) : (List xs))] = "  " ++ x ++ " [shape=doublecircle]"  ++ "\n" ++ convertV $ List $ xs
@@ -457,7 +537,7 @@ convert :: [LispVal] -> ThrowsError LispVal
 convert [List (x : xs)] = do
    v <- convertV $ x
    a <- convertA $ (head xs)
-   return $ Atom $ "digraph dfa {\n  rankdir=LR;\n  \"\" [shape=none]\n" ++ (atomContent v) ++ "\n\n" ++ "  \"\" -> " ++ (showStart x) ++ "\n" ++ (atomContent a) ++ "}"  
+   return $ Atom $ "digraph G {\n  rankdir=LR;\n  node [fixedsize=true]\n  \"\" [shape=none]\n" ++ (atomContent v) ++ "\n\n" ++ "  \"\" -> " ++ (showStart x) ++ "\n" ++ (atomContent a) ++ "}"  
 convert [badArg] = throwError $ TypeMismatch "NFA" badArg
 
 isList :: [LispVal] -> ThrowsError LispVal
@@ -536,11 +616,10 @@ eqv [_, _] = return $ Bool False
 eqv badArgList = throwError $ NumArgs 2 badArgList
 
 
-{-
-paint :: LispVal -> ThrowsError LispVal
-paint [List xs] = do
-      return $ List xs     
--}
+
+paint :: [LispVal] -> ThrowsError LispVal
+paint [List xs] = convert [List xs]     
+
 
 {-
   Boring part... Error checking
@@ -609,37 +688,7 @@ evalString env expr = runIOThrows $ liftM show $ (liftThrows $ readExpr expr) >>
   This is a monadic function that repeats but does not return a value.
   It helps executing multiple statements without exiting the program.
 -}
-{-
-getfirst :: String -> String
-getfirst ('(':xs) = getfirst xs
-getfirst (' ':xs) = []
-getfirst (x:xs) = [x] ++ getfirst xs
 
-convert :: String -> Int -> String -> String
-convert ('(':xs) 0 st = "digraph dfa {\n  rankdir=LR;\n  \"\" [shape=none]\n  " ++ convert xs 1 st
-convert ('(':xs) 1 st = convert xs 1 st
-convert ('#':xs) 1 st = convert xs 3 st
-convert (x:xs) 1 st   = [x] ++ convert xs 2 st
-convert (' ':xs) 2 st = " [shape=circle]\n  " ++ convert xs 1 st
-convert (' ':xs) 3 st = " [shape=doublecircle]\n  " ++ convert xs 1 st
-convert (')':xs) 2 st = " [shape=circle]\n  " ++ convert xs 4 st
-convert (')':xs) 3 st = " [shape=doublecircle]\n  " ++ convert xs 4 st
-convert (' ':xs) 4 st = "\n\n  \"\" -> " ++ st ++ "\n  " ++ convert xs 4 st
-convert ('(':xs) 4 st = convert xs 5 st
-convert ('(':xs) 5 st = convert xs 6 st
-convert (' ':xs) 6 st = " -> " ++ convert xs 7 st
-convert (x:xs) 6 st   = [x] ++ convert xs 6 st
-convert (' ':xs) 7 st = " [label=\"" ++ convert xs 8 st
-convert (x:xs) 7 st   = [x] ++ convert xs 7 st
-convert (')':xs) 8 st = "\"]\n  " ++ convert xs 5 st
-convert (x:xs) 8 st   = [x] ++ convert xs 8 st
-convert (' ':xs) 5 st = convert xs 5 st
-convert (')':xs) 5 st = convert xs 0 st
-convert (x:xs) 2 st   = [x] ++ convert xs 2 st
-convert (x:xs) 3 st   = [x] ++ convert xs 3 st
-convert (')':xs) 0 st = "\n}" 
-convert _ _ _ = "oh!"
--}
 {-
 heihei outh result action = do
   str <- action (init result)

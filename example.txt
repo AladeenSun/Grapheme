@@ -1,7 +1,8 @@
 (load "grapheme.scm")
 
+(define NFA '((A B C D E F G H I J #K) ((A B #) (A H #) (B C #) (B E #) (C D a) (D G #) (E F b) (F G #) (G B #) (G H #) (H I a) (I J b) (J K b))))
 
-(define DFA (NFAtoDFA '((A B C D E F G H I J #K) ((A B #) (A H #) (B C #) (B E #) (C D a) (D G #) (E F b) (F G #) (G B #) (G H #) (H I a) (I J b) (J K b)))))
+(define DFA (NFAtoDFA NFA))
 
 (relabel DFA)
 
