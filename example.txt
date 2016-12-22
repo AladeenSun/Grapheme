@@ -1,10 +1,12 @@
-(load "grapheme.scm")
+(load "sample/NFAtoDFA.scm")
 
 (define NFA '((A B C D E F G H I J #K) ((A B #) (A H #) (B C #) (B E #) (C D a) (D G #) (E F b) (F G #) (G B #) (G H #) (H I a) (I J b) (J K b))))
 
 (define DFA (NFAtoDFA NFA))
 
 (relabel DFA)
+
+(load "sample/DFA-minimize.scm")
 
 (DFA-minimize '((A B C D #E) ((A B a) (A C b) (B B a) (B D b) (C C b) (C B a) (D B a) (D E b) (E B a) (E C b))))
 
@@ -14,6 +16,7 @@
 
 '((A B C #D) ((A A b) (A B a) (B B a) (B C b) (C B a) (C D b) (D B a) (D A b)))
 
+(load "sample/NFAtoREG.scm")
 
 (define A '((A B #C D) ((A B a) (B A a) (B D b) (D B b) (A C b) (C A b) (C D a) (D C a))))
 (NFAtoREG A)

@@ -276,6 +276,7 @@ parseExpr = parseAtom
 
 showVal :: LispVal -> String
 showVal (String contents) = "\"" ++ contents ++ "\""
+showVal (Atom "#") = "\949"
 showVal (Atom name) = name
 showVal (Number contents) = show contents
 showVal (Bool True) = "#t"
